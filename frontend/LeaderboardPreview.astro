@@ -1,0 +1,194 @@
+---
+// Server-side rendered leaderboard preview
+// This component is rendered on the server and sent as HTML to the browser
+
+interface LeaderboardEntry {
+  rank: number;
+  user_id: string;
+  username: string;
+  display_name?: string;
+  avatar_url?: string;
+  total_score: number;
+  score_count: number;
+  percentile: number;
+  last_score_at?: string;
+}
+
+interface Props {
+  entries: LeaderboardEntry[];
+  limit?: number;
+}
+
+const { entries = [], limit = 10 } = Astro.props;
+const displayEntries = entries.slice(0, limit);
+---
+
+{displayEntries.length === 0 ? (
+  <div class="empty-state">
+    <p>No scores yet. Be the first to play!</p>
+  </div>
+) : (
+  <div class="leaderboard">
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Player</th>
+          <th>Score</th>
+          <th>Games</th>
+          <th>Percentile</th>
+        </tr>
+      </thead>
+      <tbody>
+        {displayEntries.map((entry) => (
+          <tr key={entry.user_id} class={`rank-${entry.rank}`}>
+            <td class="rank-cell">
+              <span class="rank-badge">
+                {entry.rank === 1 && '🥇'}
+                {entry.rank === 2 && '🥈'}
+                {entry.rank === 3 && '🥉'}
+                {entry.rank > 3 && entry.rank}
+              </span>
+            </td>
+            <td class="player-cell">
+              <a href={`/profile/${entry.username}`}>
+                {entry.display_name || entry.username}
+              </a>
+            </td>
+            <td class="score-cell">{entry.total_score.toLocaleString()}</td>
+            <td class="games-cell">{entry.score_count}</td>
+            <td class="percentile-cell">{entry.percentile.toFixed(1)}%</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+)}
+
+<style>
+  .leaderboard {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+    border: 1px solid var(--color-gray-200);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+  }
+
+  thead {
+    background-color: var(--color-gray-50);
+    border-bottom: 2px solid var(--color-gray-200);
+  }
+
+  th {
+    padding: var(--spacing-md);
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-gray-700);
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--color-gray-100);
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: var(--color-gray-50);
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  td {
+    padding: var(--spacing-md);
+    font-size: 0.9375rem;
+  }
+
+  .rank-cell {
+    font-weight: 600;
+    width: 60px;
+  }
+
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background-color: var(--color-primary);
+    color: white;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 0.875rem;
+  }
+
+  .rank-1 .rank-badge {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  }
+
+  .rank-2 .rank-badge {
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  }
+
+  .rank-3 .rank-badge {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  }
+
+  .player-cell {
+    font-weight: 500;
+  }
+
+  .player-cell a {
+    color: var(--color-primary);
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .score-cell {
+    font-weight: 600;
+    color: var(--color-success);
+  }
+
+  .games-cell {
+    color: var(--color-gray-600);
+  }
+
+  .percentile-cell {
+    color: var(--color-gray-600);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: var(--spacing-2xl) var(--spacing-md);
+    color: var(--color-gray-500);
+  }
+
+  @media (max-width: 768px) {
+    table {
+      font-size: 0.875rem;
+    }
+
+    th, td {
+      padding: var(--spacing-sm);
+    }
+
+    .rank-cell {
+      width: 50px;
+    }
+
+    .rank-badge {
+      width: 28px;
+      height: 28px;
+      font-size: 0.75rem;
+    }
+  }
+</style>
