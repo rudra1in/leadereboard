@@ -1,0 +1,30 @@
+# project.toml
+[workspace]
+name = "chess-leaderboard-monorepo"
+
+[structure]
+directories = [
+    "apps/web/src",
+    "apps/api/src",
+    "nginx",
+    "certs",
+    "libs/shared-types"
+]
+
+files = [
+    "nx.json",
+    "package.json",
+    "docker-compose.yml",
+    "apps/web/project.json",
+    "apps/web/package.json",
+    "apps/web/Dockerfile",
+    "apps/web/src/Leaderboard.jsx",
+    "apps/api/project.json",
+    "apps/api/pyproject.toml",
+    "apps/api/Dockerfile",
+    "apps/api/src/main.py",
+    "apps/api/src/database.py",
+    "apps/api/src/kafka_bus.py",
+    "nginx/project.json",
+    "nginx/nginx.conf"
+]
