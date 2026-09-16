@@ -158,28 +158,36 @@ export default function RegistrationForm({ eventId, eventTitle }: Props) {
 
     // Handle registration update
     eventSource.addEventListener('registration_update', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        setStatus('success');
-        setMessage(data.message || 'Registration confirmed!');
-        setRegistrationData((prev) => ({
-          ...prev!,
-          status: data.status || 'confirmed',
-        }));
+  try {
+    console.log("Raw SSE data received:", event.data);
 
-        // Show confirmation modal
-        setShowModal(true);
+    // Parse JSON (safeguard in case backend emits Python dict string representation)
+    let parsedData: any;
+    try {
+      parsedData = JSON.parse(event.data);
+    } catch {
+      // Fallback: replace unescaped single quotes with double quotes
+      const sanitized = event.data.replace(/'/g, '"');
+      parsedData = JSON.parse(sanitized);
+    }
 
-        // Close SSE connection
-        eventSource.close();
-      } catch (err) {
-        console.error('Error parsing SSE data:', err);
-        setStatus('error');
-        setMessage('Error processing confirmation');
-        eventSource.close();
-      }
-    });
+    setStatus('success');
+    setMessage(parsedData.message || 'Registration confirmed!');
+    setRegistrationData((prev) => ({
+      ...prev!,
+      status: parsedData.status || 'confirmed',
+    }));
+
+    setShowModal(true);
+    eventSource.close();
+  } catch (err) {
+    console.error('Error parsing SSE data:', err);
+    setStatus('error');
+    setMessage('Error processing confirmation');
+    eventSource.close();
+  }
+});
+    
 
     // Handle errors
     eventSource.onerror = () => {
