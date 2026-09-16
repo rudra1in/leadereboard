@@ -1,7 +1,7 @@
 from fastapi import APIRouter, status
 from uuid import uuid4
 from app.schemas.registration import RegistrationCreate
-from app.core.kafka import kafka_producer
+from app.core.kafka_producer  import kafka_producer
 from app.core.config import settings
 
 router = APIRouter(prefix="/registrations", tags=["registrations"])

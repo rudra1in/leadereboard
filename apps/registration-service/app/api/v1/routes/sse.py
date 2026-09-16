@@ -1,7 +1,7 @@
 import asyncio
 from fastapi import APIRouter, Request
 from sse_starlette.sse import EventSourceResponse
-from consumers.sse_broadcaster import sse_clients
+from app.consumers.sse_broadcaster import sse_clients
 
 router = APIRouter(prefix="/sse", tags=["sse"])
 

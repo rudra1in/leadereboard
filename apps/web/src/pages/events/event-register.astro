@@ -1,20 +1,83 @@
+---
+import RegistrationForm from '../../components/RegistrationForm';
+import MainLayout from '../../layouts/MainLayout.astro';
 
-const event = {
-  id 1,
+interface Event {
+  id: number;
+  title: string;
+  date: string;
+  location: string;
+  description?: string;
+  image_url?: string;
+}
+
+const event: Event = {
+  id: 1,
   title: "Jakarta Marathon 2026",
   date: "2026-11-15",
-  location: "Jakarta, Indonesia"
+  location: "Jakarta, Indonesia",
+  description: "Join thousands of runners for an exciting marathon experience in Jakarta.",
+  image_url: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1200&h=400&fit=crop"
 };
+---
 
-<html lang="en">
-  <head>
-    <title>{event.title} – Registration</title>
-  </head>
-  <body class="p-8 max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold mb-2">{event.title}</h1>
-    <p class="text-gray-600 mb-6">{event.date} • {event.location}</p>
+<MainLayout title={`${event.title} – Registration`}>
+  <div class="container mx-auto px-4 py-12">
+    <!-- Event Header -->
+    <div class="mb-12">
+      {event.image_url && (
+        <img
+          src={event.image_url}
+          alt={event.title}
+          class="w-full h-96 object-cover rounded-xl shadow-lg mb-8"
+        />
+      )}
 
-    <!-- React Island for interactive form + SSE -->
-    <RegistrationForm client:load eventId={event.id} />
-  </body>
-</html>
+      <div class="max-w-2xl">
+        <h1 class="text-4xl md:text-5xl font-bold mb-4 text-gray-900">
+          {event.title}
+        </h1>
+
+        <div class="flex flex-wrap gap-6 text-lg text-gray-600 mb-6">
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📅</span>
+            <span>
+              {new Date(event.date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">📍</span>
+            <span>{event.location}</span>
+          </div>
+        </div>
+
+        {event.description && (
+          <p class="text-gray-700 text-lg leading-relaxed mb-8">
+            {event.description}
+          </p>
+        )}
+      </div>
+    </div>
+
+    <!-- Registration Form -->
+    <div class="bg-white rounded-xl shadow-lg p-8 max-w-2xl">
+      <h2 class="text-2xl font-bold mb-6 text-gray-900">Register Now</h2>
+
+      <RegistrationForm
+        client:load
+        eventId={event.id}
+        eventTitle={event.title}
+      />
+    </div>
+  </div>
+</MainLayout>
+
+<style>
+  .container {
+    max-width: 1200px;
+  }
+</style>

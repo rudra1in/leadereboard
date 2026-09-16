@@ -8,17 +8,18 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # 👇 CHANGE THIS LINE: Remove "/data" from the end
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - registration-network  
+      - registration-network
 
   kafka:
-      image: confluentinc/cp-kafka:8.3.1
+      image: apache/kafka:4.2.1
       hostname: kafka
       container_name: kafka
       ports:
@@ -26,25 +27,72 @@ services:
       environment:
         KAFKA_NODE_ID: 1
         KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT'
-        KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092'
+        KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9092"
+        KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092"
         KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
         KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
         KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
         KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
         KAFKA_PROCESS_ROLES: 'broker,controller'
         KAFKA_CONTROLLER_QUORUM_VOTERS: '1@kafka:29093'
-        KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9092'
+        
         KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
         KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
         KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
         CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
       healthcheck:
-        test: ["CMD", "kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
+        test: ["CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
         interval: 10s
-        timeout: 5s
-        retries: 5  
+        timeout: 10s
+        retries: 10
+        start_period: 20s  
       networks:
         - registration-network  
+  kafka-init:
+    image: apache/kafka:4.2.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ['/bin/sh', '-c']
+    command: |
+      echo "🚀 Starting Kafka topic initialization..."
+      sleep 10
+      echo "📋 Creating topics..."
+      
+      /opt/kafka/bin/kafka-topics.sh \
+        --bootstrap-server kafka:29092 \
+        --create \
+        --if-not-exists \
+        --topic event.registrations \
+        --partitions 3 \
+        --replication-factor 1 \
+        --config retention.ms=604800000 \
+        --config compression.type=snappy
+      
+      /opt/kafka/bin/kafka-topics.sh \
+        --bootstrap-server kafka:29092 \
+        --create \
+        --if-not-exists \
+        --topic event.registration.results \
+        --partitions 3 \
+        --replication-factor 1 \
+        --config retention.ms=604800000 \
+        --config compression.type=snappy
+      
+      echo "✅ Topic creation completed!"
+      echo "📊 Listing all topics:"
+      /opt/kafka/bin/kafka-topics.sh \
+        --bootstrap-server kafka:29092 \
+        --list
+      
+      echo "📈 Topic details:"
+      /opt/kafka/bin/kafka-topics.sh \
+        --bootstrap-server kafka:29092 \
+        --describe \
+        --topic event.registrations
+    networks:
+      - registration-network
+    restart: on-failure
   registration-service:
     build:
       context: ./registration-service
@@ -67,6 +115,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+        - registration-network    
         
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
