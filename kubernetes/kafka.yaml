@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka
+  namespace: gamex
+  labels:
+    app: kafka
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate # Prevents two pods attempting to bind storage/ports simultaneously
+  selector:
+    matchLabels:
+      app: kafka
+  template:
+    metadata:
+      labels:
+        app: kafka
+      annotations:
+        linkerd.io/inject: disabled
+    spec:
+      containers:
+      - name: kafka
+        image: apache/kafka:4.2.1
+        ports:
+        - containerPort: 9092
+          name: ext-host
+        - containerPort: 29092
+          name: int-mesh
+        - containerPort: 29093
+          name: controller
+        env:
+        - name: KAFKA_NODE_ID
+          value: "1"
+        - name: KAFKA_PROCESS_ROLES
+          value: "broker,controller"
+        - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+          value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+        - name: KAFKA_LISTENERS
+          value: "PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:29093,PLAINTEXT_HOST://0.0.0.0:9092"
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "PLAINTEXT://kafka-service.gamex.svc.cluster.local:29092,PLAINTEXT_HOST://127.0.0.1:9092"
+        - name: KAFKA_INTER_BROKER_LISTENER_NAME
+          value: "PLAINTEXT"
+        - name: KAFKA_CONTROLLER_LISTENER_NAMES
+          value: "CONTROLLER"
+        - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+          value: "1@127.0.0.1:29093"
+        - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+          value: "0"
+        - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+          value: "1"
+        - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+          value: "1"
+        - name: KAFKA_LOG_DIRS
+          value: "/tmp/kraft-combined-logs"
+        - name: CLUSTER_ID
+          value: "MkU3OEVBNTcwNTJENDM2Qk"
+        startupProbe:
+          exec:
+            command: ["/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "127.0.0.1:9092"]
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 10     # Critical: Prevents 1s JVM execution timeout
+          failureThreshold: 30
+        livenessProbe:
+          exec:
+            command: ["/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "127.0.0.1:9092"]
+          periodSeconds: 20
+          timeoutSeconds: 10
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-service
+  namespace: gamex
+spec:
+  selector:
+    app: kafka
+  ports:
+  - name: ext-host
+    protocol: TCP
+    port: 9092
+    targetPort: 9092
+  - name: int-mesh
+    protocol: TCP
+    port: 29092
+    targetPort: 29092
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-ui
+  namespace: gamex
+  labels:
+    app: kafka-ui
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-ui
+  template:
+    metadata:
+      labels:
+        app: kafka-ui
+      annotations:
+        linkerd.io/inject: disabled
+    spec:
+      containers:
+      - name: kafka-ui
+        image: provectuslabs/kafka-ui:latest
+        ports:
+        - containerPort: 8080
+          name: ui-port
+        env:
+        - name: KAFKA_CLUSTERS_0_NAME
+          value: "registration-cluster"
+        - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
+          value: "kafka-service.gamex.svc.cluster.local:29092"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-ui-service
+  namespace: gamex
+spec:
+  type: ClusterIP
+  selector:
+    app: kafka-ui
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080

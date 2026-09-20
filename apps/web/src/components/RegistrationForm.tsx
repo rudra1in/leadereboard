@@ -23,9 +23,9 @@ export default function RegistrationForm({ eventId, eventTitle }: Props) {
   // ============================================================
   // ENVIRONMENT & CONFIGURATION
   // ============================================================
-  const API_BASE_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
-  const REGISTRATION_ENDPOINT = `${API_BASE_URL}/api/v1/registrations`;
-  const SSE_ENDPOINT = `${API_BASE_URL}/api/v1/sse/registrations`;
+  const API_BASE_URL = 'http://localhost:8000';
+  const REGISTRATION_ENDPOINT = `${API_BASE_URL}/api/registrations`;
+  const SSE_ENDPOINT = `${API_BASE_URL}/api/sse/registrations`;
 
   // ============================================================
   // STATE MANAGEMENT

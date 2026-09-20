@@ -1,0 +1,22 @@
+# k8s/http-route.yaml  (Gateway API style – preferred in recent Linkerd)
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: notification-route
+  namespace: demo
+  annotations:
+    retry.linkerd.io/http: "5xx,gateway-error"
+    retry.linkerd.io/limit: "3"
+    retry.linkerd.io/timeout: "2s"
+    timeout.linkerd.io/request: "5s"
+spec:
+  parentRefs:
+  - name: notification-service
+    kind: Service
+    group: ""
+    port: 8000
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /notify

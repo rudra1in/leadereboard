@@ -1,0 +1,42 @@
+# k8s/registration.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: registration-service
+  namespace: gamex
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: registration
+  template:
+    metadata:
+      labels:
+        app: registration
+    spec:
+      containers:
+      - name: registration
+        image: registration:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        - name: NOTIFICATION_URL
+          value: "http://notification-service:8000/notify"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: registration-service
+  namespace: gamex
+spec:
+  selector:
+    app: registration
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: LoadBalancer   # or NodePort for easy local access
