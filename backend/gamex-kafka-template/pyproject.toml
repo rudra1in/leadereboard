@@ -1,0 +1,8 @@
+# pyproject.toml (common package)
+[project]
+name = "gamex-kafka-template"
+version = "1.0.0"
+dependencies = [
+    "confluent-kafka>=2.15.0,<2.16.0",
+    "pydantic-settings>=2.0",
+]

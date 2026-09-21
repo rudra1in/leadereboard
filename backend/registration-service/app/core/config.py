@@ -11,11 +11,4 @@ class Settings(BaseSettings):
     KAFKA_TOPIC_REGISTRATIONS: str = "event.registrations"
     KAFKA_TOPIC_RESULTS: str = "event.registration.results"
 
-     # Automatically load from a .env file locally
-    model_config = SettingsConfigDict(
-        env_file=".env", 
-        env_file_encoding="utf-8",
-        extra="ignore" # Safely ignore extra environment values
-    )
-
 settings = Settings()

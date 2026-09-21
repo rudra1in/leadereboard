@@ -38,10 +38,13 @@ services:
         
         KAFKA_INTER_BROKER_LISTENER_NAME: 'PLAINTEXT'
         KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-        KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
+        KAFKA_LOG_DIRS: '/var/lib/kafka/data'
         CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      volumes:
+        - kafka_data:/var/lib/kafka/data  
       healthcheck:
         test: ["CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
+
         interval: 10s
         timeout: 10s
         retries: 10
@@ -50,8 +53,8 @@ services:
         - registration-network  
   registration-service:
     build:
-      context: ./backend/registration-service
-      dockerfile: Dockerfile
+     context: ./backend
+     dockerfile: ./registration-service/Dockerfile
     container_name: registration_service
     ports:
       - "8000:8000"
@@ -91,3 +94,5 @@ networks:
     driver: bridge
 volumes:
   postgres_data:
+  kafka_data:
+     

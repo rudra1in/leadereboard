@@ -7,7 +7,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 # Copy dependency specifications
-COPY pyproject.toml .
+COPY registration-service/pyproject.toml .
 
 # Install dependencies into the builder system environment
 RUN uv pip install --system -r pyproject.toml

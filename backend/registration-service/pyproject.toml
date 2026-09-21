@@ -14,9 +14,11 @@ dependencies = [
     "aiokafka>=0.11.0",
     "sse-starlette>=2.1.3",
     "greenlet>=3.1.0",
-    "confluent-kafka>=2.15.1",
     "httpx>=0.27.0",                # ← correctly placed inside the list
 ]
+
+[tool.uv]
+package = false
 
 [build-system]
 requires = ["hatchling"]

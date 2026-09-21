@@ -8,14 +8,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-
-from kafka_template.template import KafkaTemplate
-from kafka_template.dependencies import KafkaTemplateDep
-#from app.core.kafka_producer import kafka_producer
-from kafka_template.config import KafkaSettings
-from kafka_template.template import KafkaTemplate
-from kafka_template.factory import KafkaTemplateFactory
-from kafka_template.dependencies import KafkaTemplateDep
+from app.core.kafka_producer import kafka_producer
+from app.core.kafka_broadcaster import start_sse_broadcaster   # ← Add this
 from app.api.router import api_router
 
 
@@ -26,20 +20,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     settings = KafkaSettings()          # reads KAFKA_* environment variables
-#     kafka = KafkaTemplate(settings)
-
-#     await kafka.start()
-#     app.state.kafka_template = kafka
-
-#     yield
-
-#     await kafka.stop()
-
-
-# app = FastAPI(lifespan=lifespan)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -51,17 +31,12 @@ async def lifespan(app: FastAPI):
     # ========== STARTUP ==========
     try:
         # 1. Start Kafka Producer
-        #await kafka_producer.start()
+        await kafka_producer.start()
         logger.info("Kafka producer started")
-        settings = KafkaSettings()          # reads KAFKA_* environment variables
-
 
         # 2. Start SSE Broadcaster as background task
         broadcaster_task = asyncio.create_task(start_sse_broadcaster())
         logger.info("SSE Broadcaster task created")
-        # 3. Start Registration Processor (consumes event.registrations) as background task
-        processor_task = asyncio.create_task(process_registration())
-        logger.info("Registration Processor task created")
 
     except Exception as e:
         logger.error(f"Failed to start services: {e}")
@@ -81,7 +56,7 @@ async def lifespan(app: FastAPI):
             logger.info("SSE Broadcaster stopped")
 
         # Stop Kafka producer
-        #await kafka_producer.stop()
+        await kafka_producer.stop()
         logger.info("Kafka producer stopped")
 
     except Exception as e:

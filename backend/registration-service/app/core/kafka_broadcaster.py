@@ -3,8 +3,6 @@
 import asyncio
 import json
 import logging
-from kafka_template.template import KafkaTemplate
-#from company_common_kafka.dependencies import KafkaTemplateDep
 from aiokafka import AIOKafkaConsumer
 from app.core.config import settings
 from app.core.sse import sse_clients   # ← shared dictionary
