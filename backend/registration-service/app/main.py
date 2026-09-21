@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.kafka_producer import kafka_producer
 from app.core.kafka_broadcaster import start_sse_broadcaster   # ← Add this
+from app.consumers.registration_processor import process_registration
 from app.api.router import api_router
 
 
@@ -37,6 +38,20 @@ async def lifespan(app: FastAPI):
         # 2. Start SSE Broadcaster as background task
         broadcaster_task = asyncio.create_task(start_sse_broadcaster())
         logger.info("SSE Broadcaster task created")
+         # 2. Safety Wrapper to catch hidden processor startup crashes
+        async def safe_run_processor():
+            try:
+                logger.info("LOG WATCH: Executing process_registration thread loop now...")
+                await process_registration()
+            except Exception as processor_error:
+                logger.error(
+                    f"!!! CRITICAL CRASH DETECTED INSIDE REGISTRATION PROCESSOR !!!: {processor_error}", 
+                    exc_info=True
+                )
+
+        # 3. Start Registration Processor via safe wrapper
+        processor_task = asyncio.create_task(safe_run_processor())
+        logger.info("Registration Processor task registered in loop")
 
     except Exception as e:
         logger.error(f"Failed to start services: {e}")

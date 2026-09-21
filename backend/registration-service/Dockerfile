@@ -3,39 +3,47 @@ FROM python:3.13-slim AS builder
 
 WORKDIR /app
 
-# Install uv for faster dependency installation
+# Install uv for fast dependency resolution
 RUN pip install --no-cache-dir uv
 
-# Copy dependency specifications
+# 1. Copy the pyproject.toml from registration-service to download base dependencies
 COPY registration-service/pyproject.toml .
+RUN uv pip install --system -e .
+RUN pip install --upgrade pip build 
 
-# Install dependencies into the builder system environment
-RUN uv pip install --system -r pyproject.toml
+# 2. Copy and install your common shared Kafka package
+COPY gamex-kafka-template/ ./gamex-kafka-template/ 
+RUN pip install ./gamex-kafka-template 
+
+# 3. Copy and compile the registration service local project configuration
+COPY registration-service/ ./registration-service/ 
+WORKDIR /app/registration-service 
+RUN pip install .
+
 
 # --- Runtime Stage ---
 FROM python:3.13-slim
 
 WORKDIR /app
 
-# 1. Copy the Python site-packages (Fixed path to match 3.13 -> 3.13)
+# Copy python packages and executable tools compiled in build stage
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
-
-# 2. Copy the executable binaries (This makes 'uvicorn' accessible!)
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code
-COPY . .
+# FIX: Copy the CONTENTS of the registration-service folder directly into /app
+# This drops the "registration-service/" nesting folder layout. 
+# Your container directory now contains: app/, pyproject.toml, etc.
+COPY registration-service/ .
 
-# Create non-root user
+# Setup non-root execution permissions
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Health check
+# Health check endpoint routing
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"
 
-# Expose port
 EXPOSE 8000
 
-# Run application
+# Executing Uvicorn (Will now perfectly find /app/app/main.py)
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

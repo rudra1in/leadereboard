@@ -9,8 +9,8 @@ from app.core.config import settings
 from app.core.database import AsyncSessionLocal
 from app.models.registration import Registration
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# FIX 1: Rely on application log routers instead of rewriting basicConfig
+logger = logging.getLogger("app.consumers.registration_processor")
 
 
 async def process_registration():
@@ -18,27 +18,35 @@ async def process_registration():
     logger.info(f"Connecting to Kafka: {settings.KAFKA_BOOTSTRAP_SERVERS}")
     logger.info(f"Consuming topic: {settings.KAFKA_TOPIC_REGISTRATIONS}")
 
+    # FIX 2: Set dynamic client ids for better visibility in kafka-ui
     consumer = AIOKafkaConsumer(
         settings.KAFKA_TOPIC_REGISTRATIONS,
         bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
         group_id="registration-processor",
+        client_id="registration-consumer",
         auto_offset_reset="earliest",
         value_deserializer=lambda m: json.loads(m.decode("utf-8")),
     )
 
     producer = AIOKafkaProducer(
         bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+        client_id="registration-processor-producer",
         value_serializer=lambda v: json.dumps(v).encode("utf-8"),
     )
 
     await consumer.start()
     await producer.start()
-    logger.info("Kafka Consumer and Producer started successfully")
+    logger.info("✅ Kafka Consumer and Producer started successfully")
 
     try:
         async for msg in consumer:
-            data = msg.value
-            logger.info(f"Received message: {data}")
+            # FIX 3: Guard against malformed messages crashing the main loop
+            try:
+                data = msg.value
+                logger.info(f"📥 Received message from Kafka: {data}")
+            except Exception as json_err:
+                logger.error(f"❌ Failed to parse incoming message JSON: {json_err}")
+                continue
 
             try:
                 async with AsyncSessionLocal() as session:
@@ -82,8 +90,6 @@ async def process_registration():
                             resp.raise_for_status()
                             logger.info(f"Notification service response: {resp.json()}")
                     except Exception as e:
-                        # Do not fail the registration if notification fails.
-                        # Linkerd can still retry the call if configured.
                         logger.error(
                             f"Notification call failed: {e}",
                             exc_info=True,
@@ -99,7 +105,7 @@ async def process_registration():
                             settings.KAFKA_TOPIC_RESULTS, result
                         )
                         logger.info(
-                            f"SUCCESS: Result published to {settings.KAFKA_TOPIC_RESULTS}"
+                            f"🚀 SUCCESS: Result published to {settings.KAFKA_TOPIC_RESULTS}"
                         )
                         logger.info(f"registration_id: {data['registration_id']}")
                     except Exception as e:
@@ -108,7 +114,7 @@ async def process_registration():
                     logger.info("=" * 50)
 
             except Exception as e:
-                logger.error(f"Error processing message: {e}", exc_info=True)
+                logger.error(f"Error processing message database transaction: {e}", exc_info=True)
 
     finally:
         await consumer.stop()
